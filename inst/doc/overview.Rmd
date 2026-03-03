@@ -1,0 +1,217 @@
+---
+title: "Overview of MetaEntropy"
+bibliography: "overview.bib"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Overview of MetaEntropy}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+<br>
+
+# Motivation
+High-performance sequencing has exponentially increased the power
+of intrapopulation viral diversity study.
+Short-read methods are particularly popular due to their excellent
+cost-to-depth ratio and the availability of efficient algorithms, such as the
+Burrows-Wheeler Transform, to infer read homology within the framework of
+reference genomes.
+
+*MetaEntropy* is designed to process the typical output of variant calling
+tools, consisting of information about the variants present in a population,
+relative to a reference genome, and their corresponding frequencies.
+It generates "informed" estimates of entropy at each genomic position, which,
+in addition to allele frequencies, take into account the physicochemical
+characteristics of the amino acids. The calculated values are
+normalized to a scale of 0 to 1, facilitating the comparison of different loci
+and different metagenomes.
+
+<br>
+
+# Input data
+
+Single nucleotide variants (SNVs) data must be provided in a data frame.
+This should contain columns indicating the reference genome positions
+that are polymorphic in the virome, the linkage relationships between them, the
+corresponding bases in the reference genome and in the virome, which protein and
+amino acid position each mutation affects, the corresponding amino acids in the
+reference strain and in the metagenome, and mutation frequencies.
+For example, the *wWater* dataset, which accompanies the package, has this
+information in the columns *position*, *linkage*, *ref*, *alt*, *protein*,
+*aa_position*, *ref_aa*, *alt_aa* and *alt_aa_freq*, which are the labels
+expected by default:
+
+
+```{r loadMetaEntropy, results = "hide"}
+library(MetaEntropy)
+```
+```{r seeLinked}
+wWater[105:108,-1]
+```
+
+"Linked" mutations are variants that are physically connected in the genome and
+affect a same codon.
+
+There can also be positions with several different mutations:
+
+```{r seewMultiple}
+wWater[50:51,-1]
+```
+
+These variants collectively contribute to the entropy at the affected residue.
+
+<br>
+
+# Worked example: SARS-CoV-2 immune escape
+
+## Loading packages
+
+First we load some packages used in this example:
+
+```{r loadPackages, results = "hide"}
+lapply(c("ggplot2", "patchwork"), library, character.only = TRUE)
+```
+
+## Conceptual framework and data
+
+This example uses data from wastewater colected during the first and third
+COVID-19 waves in Argentina [BioProject PRJNA1183343; @manrique-jones2025].
+The first wave was driven by ancestral SARS-CoV-2 lineages, while the third was
+dominated by Omicron subvariants.
+Omicron is a highly adapted lineage to humans, including hypervariation in the
+receptor-binding domain (RBD) in response to immunity.
+
+We will evidence the RBD relevance by an entropy analysis, and will identify
+key mutations on it.
+
+We begin by building separate datasets for ancestral and Omicron lineages.
+
+```{r datasets}
+firstWave <- wWater[ wWater$wave == "first", ]
+thirdWave <- wWater[ wWater$wave == "third", ]
+```
+A 3% minor variant cutoff was already applied to these data by the variant
+caller.
+Following the same logic, here we will also filter out minor variants whose
+genotype matches that of the reference genome:
+
+```{r filter}
+firstWave <- firstWave[ firstWave$alt_aa_freq <= 0.97, ]
+thirdWave <- thirdWave[ thirdWave$alt_aa_freq <= 0.97, ]
+```
+
+
+## Entropy signatures
+
+Now we infer the ancestral and Omicron signatures and compare them graphically.
+
+```{r signatures}
+ancestral <- getEntropySignature(firstWave)
+omicron <-  getEntropySignature(thirdWave)
+# Compare signatures
+anc_plot <- plot(ancestral) + ggtitle("Ancestral")
+omi_plot <- plot(omicron) + ggtitle("Omicron")
+anc_plot / omi_plot
+```
+
+We see that entropy at the *S* gene is relatively high in the Omicron sublineages.
+
+
+## Omicron sublineages in more detail
+
+Now we look at how entropy is distributed along genome positions in the Omicron
+sublineages.
+
+```{r omicronEntroScan, fig.width = 7}
+plot(omicron, chartType = "entroScan")
+```
+
+There are a handful of S positions that are responsible for the unusually high
+entropy.
+
+```{r}
+omicron$Entropy$position[ omicron$Entropy$entropy > 0.3 ]
+```
+
+Let's look at the corresponding mutations:
+
+```{r}
+showMutations(omicron, c(22882, 22898, 22917, 23013, 23040, 23048, 23055, 23063))
+```
+
+The literature tells us that these SNVs affect the RBD [@Lan2020].
+
+Viral RBDs are targeted by the immune system because they are
+vital for cell binding and entry.
+There is solid observational and experimental evidence for S:N440K, S:G446S,
+S:L452R, S:E484A, S:Q493R, S:G496S, S:Q498R and S:N501Y [@Guigon2022;
+@Liang2022; @Liu2021; @Motozono2022; @Rani2021; @Starr2021; @Starr2021a;
+@Weisblum2020; @Zhang2022].
+
+```{r, eval = FALSE}
+# Search PUBMED for more studies on these mutations:
+library(rentrez)
+#
+# create search phrase
+mutations <- showMutations(omicron, c(22882, 22898, 22917, 23013, 23040, 23048, 23055, 23063))
+searchPhrase <- paste0(gsub("S:", "", mutations$phenotype, fixed = TRUE), "[TIAB]")
+searchPhrase <- paste0("SARS-CoV-2[TITLE] AND spike [TIAB] AND (", paste0(searchPhrase, collapse = " OR "), ")")
+#
+# search
+mySearch <- entrez_search(db = "pubmed", term = searchPhrase, retmax = 1000)
+#
+# Number of studies
+mySearch$count
+[1] 560
+#
+```
+
+We can do a formal analysis by **`assessHotSpot`()**.
+The RBD is located between genomic positions 22517 and 23186.
+
+```{r}
+assessHotSpot(omicron, c(22517, 23186))
+```
+
+```{r}
+assessHotSpot(ancestral, c(22517, 23186))
+```
+
+<br>
+
+
+# Integrating Biological Signal via Entropy
+
+Entropy analysis categorizes observations and takes into account the
+corresponding frequencies in natural populations.
+This adds significant information to sequence data.
+
+```{r}
+summary(ancestral)
+```
+In the summary above, we observe that *ORF6* and *N* proteins have high
+mutational rates, both overall (SNV/Kb) and non-synonymous (non-Syn/Kb).
+However, the corresponding entropies do not stand out among those of other
+proteins.
+
+This contrasts with *S*, which, despite having average mutation rates, exhibits
+entropies biased towards high values.
+
+This is even more evident for Omicron sublineages:
+
+```{r}
+summary(omicron)
+```
+
+<br>
+
+
+# References
