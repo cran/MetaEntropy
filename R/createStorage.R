@@ -41,7 +41,7 @@ createStorage <- function(categories){ # "sensitive"/"robust"
 	                                       ),
 	       sensitive = catsAndFreqs <- list(
 					     phe = "F",
-					     trp = "T",
+					     trp = "W",
 					     tyr = "Y",
 					     met = "M",
 					     leu = "L",

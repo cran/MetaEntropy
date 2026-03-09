@@ -1,10 +1,11 @@
-c4ec46adbb901176c79b198bfa0c6ab7 *DESCRIPTION
+fd4db3ae487469061a40c102f9f2ef06 *DESCRIPTION
 09e3fa22ef31419b1ada00d6883a6470 *LICENSE
 c55045b60c28c09c6d8b7569f9eb9919 *NAMESPACE
+c54c08a3c2fcc40421bb9e48515cace0 *NEWS.md
 12293944c7457951f294a09920b38f0e *R/as.data.frame.entropyProfile.R
 35961dfb66d0680c92807bf1c6247d1b *R/assessHotSpot.R
 b953644c20064d001b6b6fedb32d1a0e *R/createPositionSummary.R
-4c4a0a079f5f4d65daf8de9d08e1920c *R/createStorage.R
+3eaa47436b58af15ff75c8aa35902ff4 *R/createStorage.R
 6276fe5d8992f775ec7c784f0d8b41ed *R/entropyProfile.R
 bb13fecbb679b33341033a36fdadbf71 *R/fillPosition.R
 08128bf952d2821c8b2db52defda7e9d *R/getEntropySignature.R
