@@ -20,13 +20,13 @@
 #'
 #' @seealso \code{\link{getEntropySignature}}.
 #'
-#' @keywords internal
 #
 createPositionSummary <- function(variants, ref_aa, alt_aa, alt_aa_freq){
-	aminoAcids <- character(length = dim(variants)[1] + 1)
+	aminoAcids <- character(length = dim(variants)[1] + 1)# +1: space for the variant equal to ref_aa
 	aminoAcids[1] <- variants[,ref_aa][1]
 	frequencies <- numeric(length = dim(variants)[1] + 1)
-	for(variante in 1:length(variants[,alt_aa])){
+	# load alternative variant/s and their frequencies
+	for(variante in 1:length(variants[,alt_aa])){# 1: (i.e., not 2:) used to remind variant 1 is the same as the ref. aa
 		aminoAcids[variante + 1] <- variants[,alt_aa][variante]
 		frequencies[variante + 1] <- variants[,alt_aa_freq][variante]
 	}

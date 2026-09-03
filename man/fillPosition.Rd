@@ -29,4 +29,3 @@ frame passed to the function (\code{positionsSummary} parameter).
 \seealso{
 \code{\link{getEntropySignature}}.
 }
-\keyword{internal}

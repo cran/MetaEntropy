@@ -25,6 +25,7 @@
 #' assessHotSpot(omicron, c(22517, 23186), chartType = "swarm")
 #'
 #' @export
+#'
 assessHotSpot <- function(profile, boundaries, chartType = "boxplot"){
 	#
 	correctParameters <- c(perfil = FALSE, boundaries = FALSE)

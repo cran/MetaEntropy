@@ -1,18 +1,20 @@
 #' Print method for  \code{profileSummary} objects
 #'
 #' This function formats and prints compact entropy profile summaries
-#' (\code{profileSummary} objects), on the console.
+#' (\code{profileSummary} objects) created by \code{summary.entropyProfile()},
+#' on the console.
 #'
 #' @param x An object of class \code{profileSummary} created by
 #'          \code{\link{summary.entropyProfile}}.
 #' @param ... Additional arguments passed to the function.
-#'
-#' @method print profileSummary
 #' 
 #' @return Invisibly returns \code{NULL}. This function is used for its side
 #'         effect.
 #' 
+#' @method print profileSummary
+#' 
 #' @export
+#' 
 #
 print.profileSummary <- function(x, ...) {
 	gsub("Table: ",

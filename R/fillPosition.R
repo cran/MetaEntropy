@@ -18,18 +18,16 @@
 #'
 #' @seealso \code{\link{getEntropySignature}}.
 #'
-#' @keywords internal
-#
 fillPosition <- function(positionSummary, categories){
 	aminoAcids <- positionSummary$aminoAcids
 	frequencies <- positionSummary$frequencies
 	#
 	variantPosition <- createStorage(categories)
 	#
-	for(aminoAcid in aminoAcids){
+	for(aminoAcid in 1:length(aminoAcids)){
 		for(categoria in names(variantPosition[names(variantPosition) != "frequencies"])){
-			if(!is.na(match(aminoAcid, variantPosition[[categoria]]))){
-				variantPosition$frequencies[categoria] <- variantPosition$frequencies[categoria] + frequencies[aminoAcids == aminoAcid]
+			if(!is.na(match(aminoAcids[aminoAcid], variantPosition[[categoria]]))){
+				variantPosition$frequencies[categoria] <- variantPosition$frequencies[categoria] + frequencies[aminoAcid]
 			}
 		}
 	}

@@ -25,4 +25,3 @@ function.
 \seealso{
 \code{\link{getEntropySignature}}.
 }
-\keyword{internal}

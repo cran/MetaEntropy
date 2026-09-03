@@ -7,14 +7,14 @@
 #' @param ...    Other parameters passed to the function.
 #'
 #' @rdname summary.entropyProfile
-#'
-#' @method summary entropyProfile
 #' 
 #' @return An object of class \code{c("profileSummary", "list")} summarizing
 #'         an entropy profile. Intended to be displayed via
 #'         \code{print.profileSummary}.
 #' 
 #' @export
+#'
+#' @method summary entropyProfile
 #
 summary.entropyProfile <- function(object, ...){
 	#

@@ -19,9 +19,6 @@
 #'
 #' @seealso \code{\link{getEntropySignature}}.
 #'
-#' @keywords internal
-#'
-# Creates a structure to store info on variants seen at a genome position
 createStorage <- function(categories){ # "sensitive"/"robust"
 	switch(categories,
 	       robust = catsAndFreqs <- list(

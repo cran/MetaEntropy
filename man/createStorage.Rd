@@ -29,4 +29,3 @@ given genomic position, by the \code{fillPosition} function.
 \seealso{
 \code{\link{getEntropySignature}}.
 }
-\keyword{internal}

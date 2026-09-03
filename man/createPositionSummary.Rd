@@ -33,4 +33,3 @@ corresponding frequencies, and returns them combined in a data frame.
 \seealso{
 \code{\link{getEntropySignature}}.
 }
-\keyword{internal}

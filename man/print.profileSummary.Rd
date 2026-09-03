@@ -18,5 +18,6 @@ effect.
 }
 \description{
 This function formats and prints compact entropy profile summaries
-(\code{profileSummary} objects), on the console.
+(\code{profileSummary} objects) created by \code{summary.entropyProfile()},
+on the console.
 }

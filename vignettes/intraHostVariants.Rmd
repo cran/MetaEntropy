@@ -1,0 +1,224 @@
+---
+title: "`intraHostVariants`: SNVs from Multiple Anatomical Sites"
+bibliography: "intraHostVariants.bib"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{`intraHostVariants`: SNVs from Multiple Anatomical Sites}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+# Introduction
+
+Intra-host viral diversity (or *quasispecies*) drives resilience to the immune
+responses and therapeutical interventions, while also fostering the emergence
+of new lineages [@Andino2015; @Eigen1996; @Jones2025].
+The `intraHostVariants` dataset contains SARS-CoV-2 single nucleotide variants
+(SNVs) identified from autopsies of individuals with postmortem viral detection
+and no documented immunocompromise [@Manrique2024].
+
+Although `MetaEntropy` is tailored primarily for high-density wastewater data,
+it is also effective for quantifying and analyzing intra-host viral protein
+diversity, as demonstrated in this vignette.
+For specialized or comprehensive quasispecies characterization, dedicated tools
+such as `QSutils` [@GuerreroMurillo2018] are recommended.
+
+First load the required packages:
+
+```{r loadPackages, results = "hide"}
+lapply(c("MetaEntropy", "ggplot2", "patchwork", "tidyr"),
+       library, character.only = TRUE
+)
+```
+
+# Data Structure and Characteristics
+
+`intraHostVariants` is a `data.frame` containing information on 213 SNVs
+inferred across lung, intestinal, cardiac, renal, and hepatic tissues.
+Its 16 columns include everything required by `MetaEntropy`, alongside
+experimental metadata and standard outputs typical of variant caller tables.
+The underlying bioinformatic workflow is detailed in the `intraHostVariants`
+documentation.
+
+SARS-CoV-2 infections primarily cause respiratory illness, but the virus can
+spread systemically and replicate independently across different anatomical
+sites  [@Stein2022; @Manrique2024].
+Consequently, individual tissues may harbor exclusive SNVs or share them at
+varying frequencies.
+This within-host diversity is well illustrated by `intraHostVariants`.
+
+First, let's look at the distribution of SNVs across anatomical compartments:
+
+```{r computeSNVs}
+addmargins(
+	   table(intraHostVariants$case,
+		 intraHostVariants$organ
+		 ),
+	   margin = 2
+)
+```
+Two to five SNVs are recorded per respiratory sample, closely aligning
+with ranges reported in prior swab-based studies [@Jones2025].
+However, the total number of SNVs recorded per individual ranges from 10 to 88
+across all tissues.
+
+Next, let's examine the distribution of SNV frequencies.
+First, we pivot the dataset to place the alternative amino acid frequencies
+into separate columns for each anatomical compartment:
+
+```{r widenData, results = "hide"}
+wide_ihv <- tidyr::pivot_wider(intraHostVariants,
+		 names_from = organ,
+		 values_from = alt_aa_freq,
+		 # Use 0 (instead of NA) for undetected
+		 # mutations.
+		 values_fill = list(alt_aa_freq = 0)
+)
+```
+
+We can now use `wide_ihv` to visualize these variant frequencies across tissues with
+parallel coordinates plots:
+
+```{r doParCoordPlot, fig.width = 4, fig.height = 8, out.width = "50%", results = "hide"}
+par(mfcol = c(4,1), mar = c(2, 4, 2, 2) + 0.1)
+for(case in sort(unique(wide_ihv$case))){
+	thisCase <- t(wide_ihv[wide_ihv$case == case, c(15, 16, 17, 18, 19)])
+	matplot(thisCase, type = "b", pch = 19, col = rgb(0, 0, 0, 0.4), lty = 1,
+		xaxt = "n", xlab = "",
+		main = sub("c", "case ", case),
+		ylab = "SNV frequency"
+	)
+	axis(side = 1, at = 1:5, labels = rownames(thisCase)
+	)
+}
+```
+
+This reveals that the viral quasispecies varies considerably between anatomical
+sites.
+For instance, the lung and heart in case 18 harbor three high-frequency SNVs
+that are absent from other organs:
+
+```{r c18Contrasts}
+intraHostVariants[intraHostVariants$case == "c18" & intraHostVariants$alt_aa_freq > 0.2 ,
+                  c(1, 2, 10, 13, 14, 15, 16)]
+```
+
+# Package Integration
+
+Intra-host SNVs can be synonymous or non-synonymous, and the impact of
+non-synonymous mutations varies depending on whether the resulting amino acid
+substitution is conservative or radical.
+From a virological perspective, these phenotypic changes are particularly
+relevant because they are more likely to alter viral physiology.
+`MetaEntropy` is particularly useful here because it calculates amino acid
+entropy and allows residues to be classified based on their physicochemical
+properties, offering a nuanced view of functional protein diversity.
+We will now use `MetaEntropy` to evaluate amino acid diversity across
+anatomical sites within each individual.
+
+First, we split the dataset into separate `data.frame` objects according to the
+experimental design strata (organ and case), storing them as a list:
+
+```{r splitData, results = "hide"}
+strata <- split(intraHostVariants,
+                    list(intraHostVariants$organ, intraHostVariants$case),
+                    sep = "_", drop = TRUE
+)
+```
+
+## Create a custom `genome`
+
+The SNVs of `intraHostVariants` were inferred using the genomic sequence of the
+reference strain Wuhan-Hu-1, which is the same as that of the reference genome
+provided with `MetaEntropy` (list object `mn908947.3`).
+However, `mn908947.3` splits the nsp12 mature peptide into its ORF1a- and
+ORF1b-derived segments (nucleotides 13,442--13,468 and 13,468--16,236,
+respectively) to accommodate the -1 ribosomal frameshift.
+In contrast, intraHostVariants does not use this split encoding; instead, nsp12
+is represented as a single continuous block spanning nucleotides
+13,442--16,236.
+Therefore, the object passed to the `genome` argument of `getEntropySignature()`
+must reflect this single continuous region.
+We can modify mn908947.3 accordingly:
+
+
+```{r createGenome, results = "hide"}
+mn908947.3.ihv <- mn908947.3
+# Get the nsp12 3' end and assign it to nsp12_end
+nsp12_rows <- mn908947.3.ihv$CDS$protein %in% c("nsp12a", "nsp12b")
+nsp12_end <- max(mn908947.3.ihv$CDS$end[nsp12_rows])
+# Create an entry for nsp12 from nsp12a
+mn908947.3.ihv$CDS$protein[mn908947.3.ihv$CDS$protein == "nsp12a"] <- "nsp12"
+# Update the 3' end
+mn908947.3.ihv$CDS$end[mn908947.3.ihv$CDS$protein == "nsp12"] <- nsp12_end
+# dismiss the old nsp12b annotation
+mn908947.3.ihv$CDS <- mn908947.3.ihv$CDS[mn908947.3.ihv$CDS$protein != "nsp12b", ]
+# tidy up the environment
+rm(nsp12_rows, nsp12_end)
+```
+
+## Entropy computation
+
+Now we apply `getEntropySignature()` to each partition:
+
+```{r computeEntropies, results = "hide"}
+profiles <- lapply(strata, function(df) {
+			   getEntropySignature(df, position = "POS", ref = "REF", alt = "ALT",
+					       genome = mn908947.3.ihv
+			   )
+})
+```
+
+## Profiles comparison
+
+Now we can visually compare entropy across anatomical sites using
+`heatmap_entropyProfiles()`:
+
+```{r doHeatMaps, fig.width = 9, fig.height = 7, out.width = "90%", results = "hide"}
+heatmap_entropyProfiles(!!!profiles)
+```
+
+The heatmap indicates that total intra-host viral entropy extends beyond what
+is observed in the respiratory tract alone.
+We can summarize this difference across mature viral proteins by grouping
+organs into respiratory versus non-respiratory compartments:
+
+
+```{r doBoxPlots, fig.width = 9, fig.height = 7, out.width = "90%", results = "hide"}
+combined_entropy <- lapply(profiles, function(p) p$Entropy) |> do.call(rbind, args = _)
+combined_entropy <- cbind(combined_entropy,
+                          system = factor(ifelse(grepl("lung", rownames(combined_entropy)),
+                                                       "respiratory system", "other"),
+                                          levels = c("respiratory system", "other")
+                                   )
+                    )
+# Plot in genomic order
+combined_entropy$protein <- factor(
+                                   combined_entropy$protein,
+                                   levels = mn908947.3.ihv$CDS$protein
+)
+bp <- ggplot2::ggplot(data = combined_entropy, aes(x = protein, y = entropy)) +
+	ggplot2::geom_boxplot(varwidth = T) +
+	ggplot2::facet_wrap(~ system, ncol = 1, scales = "free_y") +
+	ggplot2::scale_x_discrete(drop = FALSE) +
+	ggplot2::theme_bw() +
+	ggplot2::theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+bp
+```
+
+Overall, this vignette demonstrates how `MetaEntropy` can untangle proteomic
+variation across viral populations and subpopulations.
+These insights offer directions for future research.
+For instance, in the case of viral quasispecies shown here, the entropy
+profiles highlight avenues to explore, such as how localized proteomic
+variation influences immune responses, or the extent to which swab sampling captures
+total intra-host viral diversity.
+
+# References

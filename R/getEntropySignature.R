@@ -29,9 +29,7 @@
 #'         information on each CDS and corresponding mutations observed in the
 #'         virome, and a \code{list} with CDS data and length of the reference
 #'         genome used in variant calling.
-
- 
-
+#'
 #'
 #' @details You provide a data frame with SNVs information including reference
 #' and alternative aminoacids, their frequencies, and corresponding positions
@@ -97,7 +95,9 @@ getEntropySignature <- function(polymorphisms,
 	#
 	args <- as.list(environment())
 	args$categories <- NULL
-	perfil <- do.call(entropyProfile, args)
+	processedData <- do.call(entropyProfile, args)
+	perfil <- processedData$Perfil
+	polymorphisms <-  processedData$Polymorphisms_multiplexed
 	#
 	# loop position-wise across SNVs
 	for(posicion in unique(polymorphisms[,position])){

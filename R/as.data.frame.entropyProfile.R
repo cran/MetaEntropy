@@ -19,7 +19,8 @@
 #'
 as.data.frame.entropyProfile <- function(x, row.names = NULL, optional = FALSE, ...){
 	return(data.frame(protein = x$Entropy["protein"],
-			  position = x$Entropy["position"],
+			  # use trunc() to "demultiplex" overlapped mutations
+			  position = trunc(x$Entropy["position"]),
 			  entropy = x$Entropy["entropy"]
                )
 	)

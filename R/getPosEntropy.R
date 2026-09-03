@@ -15,8 +15,6 @@
 #'
 #' @seealso \code{\link{getEntropySignature}}.
 #'
-#' @keywords internal
-#
 getPosEntropy <- function(variantPosition){
 	frecuencias <- variantPosition$frequencies[variantPosition$frequencies > 0]
 	entropia <- 0

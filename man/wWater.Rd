@@ -8,9 +8,9 @@
 An object of class \code{data.frame} with 148 rows and 10 columns.
 }
 \source{
-Manrique, Julieta Marina, and Leandro Roberto Jones. 2025. A
-Cost-Effective Wastewater-Based Workflow for Community-Level Insights into
-SARS-CoV-2 Evolution. Unpublished 0 (0): 000-000.
+Manrique, Julieta Marina, and Leandro Roberto Jones. 2026. Genomic
+surveillance of SARS-CoV-2: a resource-efficient wastewater-based
+workflow. Molecular Biology Reports 53 : 995.
 }
 \usage{
 wWater

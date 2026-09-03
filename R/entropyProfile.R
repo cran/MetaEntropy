@@ -33,8 +33,6 @@
 #'
 #' @seealso \code{\link{getEntropySignature}}.
 #'
-#' @export
-#
 entropyProfile <- function(polymorphisms,
 			   position = "position",
 			   linkage = "linkage",
@@ -102,6 +100,98 @@ entropyProfile <- function(polymorphisms,
 		}
 	}
 	#
+	# Account for ORF superposition (positions are multiplexed internally)
+	# Implements "multiplexed" positions by adding decimals, e.g. position
+	# 100, becomes 100, 100.1, 100.2, etc. ("pseudo mapping").
+	#
+	# A "general" example, with "linkage" (not a real example);
+	# All three positions in a codon display mutations
+	#
+	#       position linkage ref alt  protein   codon    ref_aa alt_aa  freq
+	# 50    1        2       G   T    X         123      A      B       0.09884
+	# 51    1        2       A   A    Y         456      M      N       0.09884
+	# 52    2        3       G   T    X         123      A      B       0.09884
+	# 53    2        3       C   G    Y         456      M      N       0.12706
+	# 54    3        2       A   A    X         123      A      B       0.09884
+	# 55    3        2       C   G    Y         456      M      N       0.12706
+	#
+	# Ergo, have to "displace" either all the positions associated with protein X or all
+	# the positions associated with protein Y.
+	#
+	# 1. See which positions are repeated
+	are_duplicate <- duplicated(polymorphisms[ ,position])
+	# returns a logic pointing to cells 50 to 55.
+	# 
+	duplicates <- unique(polymorphisms[ ,position][are_duplicate])
+	# returns "c(1, 2, 3)"
+	#
+	# 2. See which positions are  repeated due to overlaps ("protein" column will be labelled differently).
+	for(this_duplicate in duplicates){
+		# check if a single or multiple proteins are listed for the repeated position 
+		affected_proteins <- polymorphisms[ polymorphisms[ ,position] == this_duplicate, protein]
+		# when this_duplicate is 1 affected_proteins is "c(X, Y)"
+		n_affected_proteins <- length(unique(affected_proteins))
+		# when this_duplicate is 1, n_affected_proteins is "2" 
+		if( n_affected_proteins > 1 ){# there is an overlap; multiplex it (true when this_position equals 1, 2, and 3)
+			# See how many times the position is repeated
+			repetitions <- length(polymorphisms[ polymorphisms[,position] == this_duplicate ,position])
+			# equals "2" for positions 1, 2 and 3
+			# Calculate displacements
+			displacement <- 1/repetitions # e.g. 4 repetitions gives 0.25.; then
+			                              # "x" becomes "x", "x.25", "x.50", "x.75" (never reaches x + 1)
+			# diplacement is 0.5 for positions 1, 2 and 3
+			# multiplex
+			toMultiplex <- which( polymorphisms[,position] == this_duplicate )# a numerical vector, indexing
+			                                                                  # the positions to be multiplexed
+			# equals "c(50, 51)" when this_duplicate is "1"
+			for(displaceThis in toMultiplex[-1]){# [-1] remove the first position of the vector
+				# loop starts at "52" when this position is "1"
+				polymorphisms[,position][displaceThis] <- polymorphisms[,position][displaceThis - 1] + displacement
+				# Using "[displaceThis - 1]" keeps adding "displacement" the the previous member of the
+				# When this_position equals "1", our example becomes:
+				#
+				#       position   linkage ref alt  protein   codon    ref_aa alt_aa  freq
+				# 50    1          2       G   T    X         123      A      B       0.09884
+				# 53    1.5        2       A   A    Y         456      M      N       0.09884
+				# 51    2          3       G   T    X         123      A      B       0.09884
+				# 54    2          3       C   G    Y         456      M      N       0.12706
+				# 52    3          2       A   A    X         123      A      B       0.09884
+				# 55    3          2       C   G    Y         456      M      N       0.12706
+				#
+				# So, we have to multiplex the linked position informing on protein "Y" (position[52]),
+				# because in the next round, when this_positions will be "2", it will be set to 2.5.
+				#
+				# Check if linked
+				this_linkage <- polymorphisms[ , linkage][displaceThis]
+				if(!is.na(this_linkage)){
+					polymorphisms[ , linkage][displaceThis] <- this_linkage + displacement
+				}
+				# When thisposition is 1 displaceThis is "52", so the above results in
+				#
+				#       position   linkage   ref alt  protein   codon    ref_aa alt_aa  freq
+				# 50    1          2         G   T    X         123      A      B       0.09884
+				# 51    1.5        2.5       A   A    Y         456      M      N       0.09884
+				# 52    2          3         G   T    X         123      A      B       0.09884
+				# 53    2          3         C   G    Y         456      M      N       0.12706
+				# 54    3          2         A   A    X         123      A      B       0.09884
+				# 55    3          2         C   G    Y         456      M      N       0.12706
+				#
+				# And after processing all 3 positions:
+				#
+				#       position   linkage   ref alt  protein   codon    ref_aa alt_aa  freq
+				# 50    1          2         G   T    X         123      A      B       0.09884
+				# 51    1.5        2.5       A   A    Y         456      M      N       0.09884
+				# 52    2          3         G   T    X         123      A      B       0.09884
+				# 53    2.5        3.5       C   G    Y         456      M      N       0.12706
+				# 54    3          2         A   A    X         123      A      B       0.09884
+				# 55    3.5        2.5       C   G    Y         456      M      N       0.12706
+				#
+			}
+		}
+		else{# no overlap, ergo do nothing
+		}
+	}
+	#
 	# proteins with records
 	proteins <- character()
 	for(posicion in unique(polymorphisms[ ,position])){
@@ -122,12 +212,12 @@ entropyProfile <- function(polymorphisms,
 	#
 	# Structure that carries the profile
 	perfil <- list(SNVs = snvs,
-		       Entropy = data.frame(position = unique(polymorphisms[,position, drop = T]),# again account for multi-haplotype polymorphisms
+		       Entropy = data.frame(position = unique(polymorphisms[,position]),# again account for multi-haplotype polymorphisms
 					    protein = proteins,
 					    entropy = entropies
 		       ),
 		       Mutations = data.frame(protein = unique(proteins), # proteins with records
-					      cdsLength = cds[ which(cds[ , "protein"] %in% unique(proteins)), "end"] - cds[ which(cds[ , "protein"] %in% unique(proteins)), "start"] - 1,
+					      cdsLength = cds[ which(cds[ , "protein"] %in% unique(proteins)), "end"] - (cds[ which(cds[ , "protein"] %in% unique(proteins)), "start"] - 1),
 					      syn = numeric(length = length(unique(proteins))),
 					      nonSyn = numeric(length = length(unique(proteins)))
 					      ),
@@ -142,5 +232,9 @@ entropyProfile <- function(polymorphisms,
 	#
 	#
 	class(perfil) <- c("entropyProfile", class(perfil))
-	return(perfil)
+	#
+	return(list(Perfil = perfil,
+		    Polymorphisms_multiplexed = polymorphisms
+		    )
+	)
 }

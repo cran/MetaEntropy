@@ -83,7 +83,7 @@ lapply(c("ggplot2", "patchwork"), library, character.only = TRUE)
 ## Conceptual framework and data
 
 This example uses data from wastewater colected during the first and third
-COVID-19 waves in Argentina [BioProject PRJNA1183343; @manrique-jones2025].
+COVID-19 waves in Argentina [BioProject PRJNA1183343; @Manrique2026].
 The first wave was driven by ancestral SARS-CoV-2 lineages, while the third was
 dominated by Omicron subvariants.
 Omicron is a highly adapted lineage to humans, including hypervariation in the

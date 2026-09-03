@@ -17,5 +17,5 @@ Invisibly returns \code{NULL}. Called for side effect.
 }
 \description{
 This function formats and prints compact mutation summaries
-(\code{tidyMutations} objects), on the console.
+(\code{tidyMutations} objects) created by showMutations(), on the console.
 }
